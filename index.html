@@ -160,6 +160,12 @@ button:disabled{opacity:.45;cursor:default}
 .nd.p3{bottom:-20px;left:28%}
 .nd.p4{bottom:-20px;right:30%;transform:scaleX(-1)}
 @media (max-width:700px){.nd{width:150px;height:150px;opacity:.5}.nd.c,.nd.d{width:110px;height:110px}.nd.sp{width:70px;height:115px;opacity:.4}.nd.p1{left:-18px}.nd.p2{right:-18px}}
+.auth input{display:block;width:100%;margin:8px 0;padding:10px;border:1px solid var(--line);background:var(--empty);color:inherit;border-radius:8px;font:inherit;font-size:16px}
+.auth .row{display:flex;gap:8px;margin-bottom:8px}
+.auth .row button{flex:1}
+.auth .row button.on{border-color:var(--sel);font-weight:600}
+.am{color:#d6457a;min-height:20px;font-size:14px}
+#syncst{font-size:13px}
 @media (prefers-reduced-motion:reduce){.fill{transition:none}}
 </style>
 </head>
@@ -212,7 +218,7 @@ button:disabled{opacity:.45;cursor:default}
     <h1>My week</h1>
     <span class="hint" id="hint">Drag an activity into a box, or tap one and then tap boxes. Click a filled box to add a note.</span>
     <span class="sp"></span>
-    <button id="undo" disabled>↩ Undo</button><button id="clear">Clear week</button><button id="bkb">Export / import</button><button id="themeBtn" aria-label="Change theme"></button>
+    <button id="undo" disabled>↩ Undo</button><button id="clear">Clear week</button><button id="bkb">Export / import</button><button id="themeBtn" aria-label="Change theme"></button><button id="acct">Sign in</button><span class="hint" id="syncst"></span>
   </header>
 
   <div class="bar">
@@ -320,7 +326,7 @@ function load(){
   cats.forEach(function(c){if(!c.p)c.p=(DEFAULT_P[c.id]||[]).slice();});
 }
 function save(){
-  try{localStorage.setItem('weekplanner.v1',JSON.stringify((syncWeek(),data())));}catch(e){}
+  saveLocal();cloudQueue();
 }
 function cat(id){for(var i=0;i<cats.length;i++)if(cats[i].id===id)return cats[i];return null;}
 function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
@@ -518,6 +524,128 @@ document.getElementById('mrm').onclick=function(){
   pushUndo();delete plan[noteKey];delete notes[noteKey];
   save();closeNote();renderGrid();renderStats();
 };
+var SB_URL='https://ykhrwceqvxnmkhrmxrwa.supabase.co';
+var SB_KEY='sb_publishable_K7vk4QJddkaMUbacWPlPww_cG6OohQm';
+var FAKE_DOMAIN='users.myweek.app';
+var sess=null, cloudReady=false, pushT=null;
+function saveLocal(){try{localStorage.setItem('weekplanner.v1',JSON.stringify((syncWeek(),data())));}catch(e){}}
+function emailOf(u){return u+'@'+FAKE_DOMAIN;}
+function sbHeaders(tok){var h={'apikey':SB_KEY,'Content-Type':'application/json'};if(tok)h['Authorization']='Bearer '+tok;return h;}
+function setSt(t){var e=document.getElementById('syncst');if(e)e.textContent=t;}
+function updateAcct(){var b=document.getElementById('acct');b.textContent=sess?'Sign out ('+sess.username+')':'Sign in';}
+async function authCall(path,body){
+  var r=await fetch(SB_URL+'/auth/v1/'+path,{method:'POST',headers:sbHeaders(),body:JSON.stringify(body)});
+  var j={};try{j=await r.json();}catch(e){}
+  if(!r.ok)throw new Error(j.msg||j.error_description||j.message||j.error||'Request failed');
+  return j;
+}
+function setSess(j,username){
+  sess={access_token:j.access_token,refresh_token:j.refresh_token,expires_at:Math.floor(Date.now()/1000)+(j.expires_in||3600),uid:j.user.id,username:username};
+  try{localStorage.setItem('weekplanner.session',JSON.stringify(sess));}catch(e){}
+}
+async function ensureToken(){
+  if(!sess)throw new Error('auth');
+  if(sess.expires_at-60<Date.now()/1000){
+    try{var j=await authCall('token?grant_type=refresh_token',{refresh_token:sess.refresh_token});setSess(j,sess.username);}
+    catch(e){if(/failed to fetch|network/i.test(String(e.message)))throw e;signOut();throw new Error('auth');}
+  }
+  return sess.access_token;
+}
+async function pullCloud(){
+  var tok=await ensureToken();
+  var r=await fetch(SB_URL+'/rest/v1/planner_data?select=data&user_id=eq.'+sess.uid,{headers:sbHeaders(tok)});
+  if(!r.ok)throw new Error('load');
+  var rows=await r.json();
+  return rows.length?rows[0].data:null;
+}
+async function pushCloud(){
+  pushT=null;if(!sess||!cloudReady)return;
+  setSt('Saving…');
+  try{
+    var tok=await ensureToken();syncWeek();
+    var h=sbHeaders(tok);h['Prefer']='resolution=merge-duplicates';
+    var r=await fetch(SB_URL+'/rest/v1/planner_data?on_conflict=user_id',{method:'POST',headers:h,body:JSON.stringify({user_id:sess.uid,data:data(),updated_at:new Date().toISOString()})});
+    if(!r.ok)throw new Error('save');
+    setSt('Saved ✓');
+  }catch(e){if(sess)setSt('Not saved yet – will retry');}
+}
+function cloudQueue(){if(!sess||!cloudReady)return;setSt('Saving…');clearTimeout(pushT);pushT=setTimeout(pushCloud,800);}
+function resetAll(){
+  cats=JSON.parse(JSON.stringify(DEFAULT_CATS));
+  cats.forEach(function(c){c.p=(DEFAULT_P[c.id]||[]).slice();});
+  weeks={};targets={};plan={};notes={};undoStack=[];
+}
+function applyData(o){
+  cats=o.cats;weeks=o.weeks||{};targets=o.targets||{};
+  cats.forEach(function(c){if(!c.p)c.p=[];});
+  var w=weeks[wk]||{};plan=w.plan||{};notes=w.notes||{};undoStack=[];
+  saveLocal();
+}
+async function startCloud(){
+  setSt('Loading…');
+  try{
+    var d=await pullCloud();
+    if(d&&Array.isArray(d.cats)){applyData(d);}
+    else{
+      syncWeek();
+      var hasLocal=Object.keys(weeks).length>0;
+      if(hasLocal&&!confirm('Import the plan saved in this browser into your account?'))resetAll();
+    }
+    cloudReady=true;
+    renderAll();updateUndo();
+    if(!d)await pushCloud();else setSt('Saved ✓');
+  }catch(e){
+    if(sess)setSt('Offline – showing this device’s copy');
+  }
+}
+function signOut(){
+  clearTimeout(pushT);pushT=null;sess=null;cloudReady=false;
+  try{localStorage.removeItem('weekplanner.session');localStorage.removeItem('weekplanner.v1');}catch(e){}
+  resetAll();renderAll();updateUndo();updateAcct();setSt('');
+  showAuth();
+}
+function showAuth(){
+  if(document.getElementById('auth'))return;
+  var mode='in';
+  var m=document.createElement('div');m.className='modal auth';m.id='auth';
+  m.innerHTML='<div class="box"><h2 style="font-size:20px;margin:0 0 4px">My week</h2><div class="hint" style="margin-bottom:12px">Sign in to keep your plan on every device.</div><div class="row"><button id="tin" class="on">Sign in</button><button id="tup">Create account</button></div><input id="au" type="text" placeholder="Username" autocomplete="username" autocapitalize="none" spellcheck="false"><input id="ap" type="password" placeholder="Password (6+ characters)" autocomplete="current-password"><div class="am" id="am"></div><div class="mb"><button id="ago" style="flex:1">Sign in</button></div><div class="mb" style="margin-top:4px"><button id="ag" style="flex:1">Continue without an account</button></div><div class="hint" style="margin-top:10px">There’s no password reset, so choose a password you’ll remember.</div></div>';
+  document.body.appendChild(m);
+  var au=m.querySelector('#au'),ap=m.querySelector('#ap'),am=m.querySelector('#am'),go=m.querySelector('#ago');
+  function msg(t){am.textContent=t;}
+  function setMode(x){mode=x;m.querySelector('#tin').className=x==='in'?'on':'';m.querySelector('#tup').className=x==='up'?'on':'';go.textContent=x==='up'?'Create account':'Sign in';ap.autocomplete=x==='up'?'new-password':'current-password';msg('');}
+  m.querySelector('#tin').onclick=function(){setMode('in');};
+  m.querySelector('#tup').onclick=function(){setMode('up');};
+  m.querySelector('#ag').onclick=function(){m.remove();};
+  async function submit(){
+    var u=(au.value||'').trim().toLowerCase(),p=ap.value;
+    if(!/^[a-z0-9._-]{3,20}$/.test(u)){msg('Username: 3–20 letters, numbers, dots, dashes or underscores.');return;}
+    if(p.length<6){msg('Password needs at least 6 characters.');return;}
+    go.disabled=true;msg('');
+    try{
+      var j=await authCall(mode==='up'?'signup':'token?grant_type=password',{email:emailOf(u),password:p});
+      if(!j.access_token){msg('Account created, but email confirmation is still switched on in Supabase.');go.disabled=false;return;}
+      setSess(j,u);m.remove();updateAcct();startCloud();
+    }catch(e){
+      var t=String(e.message||e);
+      if(/already registered/i.test(t))t='That username is taken.';
+      else if(/invalid login/i.test(t))t='Wrong username or password.';
+      else if(/failed to fetch|network/i.test(t))t='Can’t reach the server. Check your connection.';
+      msg(t);go.disabled=false;
+    }
+  }
+  go.onclick=submit;
+  ap.onkeydown=function(ev){if(ev.key==='Enter')submit();};
+}
+function initAuth(){
+  var s=null;try{s=JSON.parse(localStorage.getItem('weekplanner.session')||'null');}catch(e){}
+  if(s&&s.access_token&&s.uid){sess=s;updateAcct();startCloud();}
+  else{updateAcct();showAuth();}
+}
+document.getElementById('acct').onclick=function(){if(sess){if(confirm('Sign out of '+sess.username+'?'))signOut();}else showAuth();};
+document.addEventListener('visibilitychange',async function(){
+  if(document.visibilityState!=='visible'||!sess||!cloudReady||pushT)return;
+  try{var d=await pullCloud();if(d&&Array.isArray(d.cats)&&!pushT){applyData(d);renderAll();updateUndo();setSt('Saved ✓');}}catch(e){}
+});
 function renderAll(){renderPal();renderWeekbar();renderGrid();renderStats();}
 
 document.getElementById('toggleEdit').onclick=function(){
@@ -548,7 +676,7 @@ document.getElementById('themeBtn').onclick=function(){var cur=document.document
 var t0=null;try{t0=localStorage.getItem('weekplanner.theme');}catch(e){}
 if(THEMES.indexOf(t0)<0)t0=(window.matchMedia&&matchMedia('(prefers-color-scheme:dark)').matches)?'dark':'light';
 setTheme(t0);
-load();renderAll();updateUndo();
+load();renderAll();updateUndo();initAuth();
 </script>
 </body>
 </html>
