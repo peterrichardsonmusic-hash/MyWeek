@@ -166,6 +166,14 @@ button:disabled{opacity:.45;cursor:default}
 .auth .row button.on{border-color:var(--sel);font-weight:600}
 .am{color:#d6457a;min-height:20px;font-size:14px}
 #syncst{font-size:13px}
+.pex{margin:0 0 10px;font-size:14px;line-height:1.5}
+.pn{position:relative;cursor:help;border-bottom:1px dotted var(--mute);width:fit-content;outline-offset:3px}
+.pn .tip{display:none;position:absolute;left:0;top:100%;margin-top:8px;z-index:10;width:min(310px,82vw);background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 12px;box-shadow:0 8px 24px rgba(0,0,0,.25);font-size:13.5px;line-height:1.4}
+.pn:hover .tip,.pn:focus .tip,.pn:focus-within .tip{display:block}
+.pn .tip b{display:block;margin-bottom:3px}
+.pn .tip em{display:block;margin-top:6px;font-style:italic}
+.srow .pn .tip{text-align:left;color:var(--ink)}
+.srow .pn .tip em{color:var(--mute)}
 @media (prefers-reduced-motion:reduce){.fill{transition:none}}
 </style>
 </head>
@@ -231,7 +239,7 @@ button:disabled{opacity:.45;cursor:default}
 
   <div class="stats"><h2>Where your week goes</h2><div class="hint" style="margin-bottom:6px">Set a weekly target per activity under Edit activities; a marker on the bar shows it.</div><div id="stats"></div></div>
 
-  <div class="stats"><h2>Pillars</h2><div class="hint" style="margin-bottom:6px">Each box counts toward every pillar its activity strengthens.</div><div id="pillars"></div></div>
+  <div class="stats"><h2>Pillars</h2><p class="pex">The Four Pillars represent the four key areas of life that deserve your time and attention: Work, Passion &amp; Pursuit, Life &amp; Love, and Health. They provide a simple way to think about how you spend your time and where it is being invested. The pillars aren’t rigid categories, and many activities will naturally support more than one. What matters is that each has a place in your life.</p><div class="hint" style="margin-bottom:6px">Hover over (or tap) a pillar for what it means. Each box counts toward every pillar its activity strengthens.</div><div id="pillars"></div></div>
 </div>
 
 <div class="modal" id="modal" hidden><div class="box" role="dialog" aria-modal="true" aria-labelledby="mt"><h2 id="mt" style="font-size:16px;margin:0 0 10px"></h2><textarea id="mn" placeholder="Add a note, e.g. which songs, which session, who you’re meeting"></textarea><div class="mb"><button id="mrm">Remove from week</button><span style="flex:1"></span><button id="mc">Cancel</button><button id="ms">Save note</button></div></div></div>
@@ -249,10 +257,10 @@ var DEFAULT_CATS=[
  {id:'c5',e:'🛋️',n:'Social / recreation / relaxing',c:'#e0a21a'}
 ];
 var PILLARS=[
- {id:'work',n:'Work',f:'Work',c:'#3b6fd8'},
- {id:'pp',n:'P&P',f:'Passion & pursuit (P&P)',c:'#8a4fd6'},
- {id:'ll',n:'L&L',f:'Life & love (L&L)',c:'#d6457a'},
- {id:'health',n:'Health',f:'Health',c:'#2e9d5b'}
+ {id:'work',n:'Work',f:'Work',t:'Work',c:'#3b6fd8',d:'The responsibilities and obligations that keep your life moving, from your career and studies to everyday tasks and life admin.',q:'What do you need to get done?'},
+ {id:'pp',n:'P&P',f:'Passion & pursuit (P&P)',t:'Passion & Pursuit',c:'#8a4fd6',d:'The interests and pursuits you choose to dedicate time to because they challenge, excite and fulfil you.',q:'What do you want to pursue?'},
+ {id:'ll',n:'L&L',f:'Life & love (L&L)',t:'Life & Love',c:'#d6457a',d:'The people, experiences and moments you value simply for the enjoyment and connection they bring.',q:'Who and what do you want to make time for?'},
+ {id:'health',n:'Health',f:'Health',t:'Health',c:'#2e9d5b',d:'The habits and activities that support your physical and mental wellbeing.',q:'How do you want to look after yourself?'}
 ];
 var DEFAULT_P={c1:['pp','health'],c2:['work'],c3:['work','pp'],c4:['health'],c5:['ll']};
 var MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -340,7 +348,7 @@ function renderPal(){
         '<input type="text" class="nm" value="'+esc(c.n)+'" aria-label="Name">'+
         '<input type="color" value="'+c.c+'" aria-label="Colour">'+
         '<label class="pl" title="Boxes per week you are aiming for">Target <input type="number" min="0" max="35" style="width:56px" value="'+(targets[c.id]||'')+'"></label>'+
-        '<span class="pl" title="Pillars this activity strengthens">'+PILLARS.map(function(p){return '<label><input type="checkbox" data-p="'+p.id+'"'+(c.p.indexOf(p.id)>-1?' checked':'')+'>'+p.n+'</label>';}).join('')+'</span>'+
+        '<span class="pl" title="Pillars this activity strengthens">'+PILLARS.map(function(p){return '<label title="'+esc(p.d+' '+p.q)+'"><input type="checkbox" data-p="'+p.id+'"'+(c.p.indexOf(p.id)>-1?' checked':'')+'>'+p.n+'</label>';}).join('')+'</span>'+
         '<button aria-label="Delete activity">Delete</button>';
       var ins=r.querySelectorAll('input');
       ins[0].oninput=function(){c.e=this.value;save();renderGrid();renderStats();};
@@ -498,7 +506,7 @@ function renderPillars(){
     var n=0;
     for(var k in plan){var c=cat(plan[k]);if(c&&c.p.indexOf(p.id)>-1)n++;}
     var r=document.createElement('div');r.className='srow';
-    r.innerHTML='<span>'+esc(p.f)+'</span><div class="track"><div class="fill" style="--c:'+p.c+';width:'+(n/total*100)+'%"></div></div><span>'+n+' / '+total+'</span>';
+    r.innerHTML='<span class="pn" tabindex="0">'+esc(p.f)+'<span class="tip"><b>'+esc(p.t)+'</b>'+esc(p.d)+'<em>'+esc(p.q)+'</em></span></span><div class="track"><div class="fill" style="--c:'+p.c+';width:'+(n/total*100)+'%"></div></div><span>'+n+' / '+total+'</span>';
     el.appendChild(r);
   });
 }
