@@ -146,12 +146,36 @@ button:disabled{opacity:.45;cursor:default}
 .deco.s5{top:auto;bottom:-20px;left:46%;transform:none}
 @media (max-width:700px){.deco{opacity:.75}.deco.sp{opacity:.7}}
 #themeBtn{font-size:18px;line-height:1;padding:6px 10px;min-width:44px}
+:root[data-theme="night"]{--bg:#0d1914;--panel:#14241d;--ink:#dcebe2;--mute:#8da89a;--line:#27413a;--empty:#10201a;--sel:#7fd69a}
+:root[data-theme="night"] body{background:linear-gradient(160deg,#0a1511,#12281f) fixed}
+.nd{display:none;position:fixed;width:300px;height:300px;color:#4fd1a1;opacity:.55;pointer-events:none;z-index:0}
+:root[data-theme="night"] .nd{display:block}
+.nd.a{top:0;right:0}
+.nd.b{bottom:0;left:0;transform:rotate(180deg)}
+.nd.c{bottom:0;right:0;width:210px;height:210px;transform:scaleY(-1)}
+.nd.d{top:50%;left:0;width:210px;height:210px;transform:scaleX(-1)}
+.nd.sp{width:120px;height:200px;color:#6fe0b0;opacity:.45}
+.nd.p1{left:-30px;top:20%;transform:rotate(90deg)}
+.nd.p2{right:-30px;top:58%;transform:rotate(-90deg)}
+.nd.p3{bottom:-20px;left:28%}
+.nd.p4{bottom:-20px;right:30%;transform:scaleX(-1)}
+@media (max-width:700px){.nd{width:150px;height:150px;opacity:.5}.nd.c,.nd.d{width:110px;height:110px}.nd.sp{width:70px;height:115px;opacity:.4}.nd.p1{left:-18px}.nd.p2{right:-18px}}
 @media (prefers-reduced-motion:reduce){.fill{transition:none}}
 </style>
 </head>
 <body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
 <path id="lf" d="M0 0C8-16 30-16 42 0C30 16 8 16 0 0Z"/>
+<path id="lf2" d="M0 0C4-7 22-7 30 0C22 7 4 7 0 0Z"/>
+<path id="lf3" d="M0 0C2-20 40-24 46 0C40 24 2 20 0 0Z"/>
+<g id="pr"><use href="#lf2" transform="rotate(85)"/><use href="#lf2" transform="rotate(190)"/></g>
+<g id="pr3"><use href="#lf3" transform="rotate(-35)"/><use href="#lf3" transform="rotate(215)"/></g>
+<g id="fern"><path d="M300 0L100 182" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+<use href="#pr" transform="translate(282 16) scale(1.5)"/><use href="#pr" transform="translate(262 35) scale(1.5)"/><use href="#pr" transform="translate(242 53) scale(1.4)"/><use href="#pr" transform="translate(222 71) scale(1.3)"/><use href="#pr" transform="translate(202 89) scale(1.2)"/><use href="#pr" transform="translate(182 107) scale(1.1)"/><use href="#pr" transform="translate(162 126)"/><use href="#pr" transform="translate(142 144) scale(.9)"/><use href="#pr" transform="translate(122 162) scale(.8)"/>
+<use href="#lf2" transform="translate(100 182) rotate(135) scale(1.2)"/></g>
+<g id="rsprig"><path d="M60 200C62 150 58 100 60 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+<use href="#pr3" transform="translate(60 172) scale(.9)"/><use href="#pr3" transform="translate(60 140)"/><use href="#pr3" transform="translate(60 108)"/><use href="#pr3" transform="translate(60 76) scale(.9)"/><use href="#pr3" transform="translate(60 48) scale(.75)"/>
+<use href="#lf3" transform="translate(60 22) rotate(-90) scale(.8)"/></g>
 <g id="sprig"><path d="M60 200C58 150 62 100 60 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
 <use href="#lf" transform="translate(60 172) rotate(-40)"/><use href="#lf" transform="translate(60 172) rotate(220) scale(.9)"/>
 <use href="#lf" transform="translate(60 142) rotate(-40) scale(.9)"/><use href="#lf" transform="translate(60 142) rotate(220)"/>
@@ -175,6 +199,14 @@ button:disabled{opacity:.45;cursor:default}
 <svg class="deco sp s3" viewBox="0 0 120 200" aria-hidden="true"><use href="#sprig"/></svg>
 <svg class="deco sp s4" viewBox="0 0 120 200" aria-hidden="true"><use href="#sprig"/></svg>
 <svg class="deco sp s5" viewBox="0 0 120 200" aria-hidden="true"><use href="#sprig"/></svg>
+<svg class="nd a" viewBox="0 0 300 300" aria-hidden="true"><use href="#fern"/></svg>
+<svg class="nd b" viewBox="0 0 300 300" aria-hidden="true"><use href="#fern"/></svg>
+<svg class="nd c" viewBox="0 0 300 300" aria-hidden="true"><use href="#fern"/></svg>
+<svg class="nd d" viewBox="0 0 300 300" aria-hidden="true"><use href="#fern"/></svg>
+<svg class="nd sp p1" viewBox="0 0 120 200" aria-hidden="true"><use href="#rsprig"/></svg>
+<svg class="nd sp p2" viewBox="0 0 120 200" aria-hidden="true"><use href="#rsprig"/></svg>
+<svg class="nd sp p3" viewBox="0 0 120 200" aria-hidden="true"><use href="#rsprig"/></svg>
+<svg class="nd sp p4" viewBox="0 0 120 200" aria-hidden="true"><use href="#rsprig"/></svg>
 <div class="wrap">
   <header>
     <h1>My week</h1>
@@ -506,11 +538,11 @@ document.getElementById('bkb').onclick=openBackup;
 document.addEventListener('keydown',function(ev){
   if((ev.metaKey||ev.ctrlKey)&&ev.key==='z'&&!/INPUT|TEXTAREA/.test(document.activeElement.tagName)){ev.preventDefault();undo();}
 });
-var THEMES=['dark','light','nature'];
+var THEMES=['dark','light','nature','night'];
 function setTheme(t){
   document.documentElement.setAttribute('data-theme',t);
   try{localStorage.setItem('weekplanner.theme',t);}catch(e){}
-  var bt=document.getElementById('themeBtn');bt.textContent={dark:'🌙',light:'☀️',nature:'🌿'}[t];bt.setAttribute('aria-label','Change theme (currently '+t+')');
+  var bt=document.getElementById('themeBtn');bt.textContent={dark:'🌙',light:'☀️',nature:'🌿',night:'🌲'}[t];bt.setAttribute('aria-label','Change theme (currently '+t+')');
 }
 document.getElementById('themeBtn').onclick=function(){var cur=document.documentElement.getAttribute('data-theme');setTheme(THEMES[(THEMES.indexOf(cur)+1)%THEMES.length]);};
 var t0=null;try{t0=localStorage.getItem('weekplanner.theme');}catch(e){}
