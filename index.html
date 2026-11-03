@@ -174,6 +174,16 @@ button:disabled{opacity:.45;cursor:default}
 .pn .tip em{display:block;margin-top:6px;font-style:italic}
 .srow .pn .tip{text-align:left;color:var(--ink)}
 .srow .pn .tip em{color:var(--mute)}
+.cell .x,.cell .ne{position:absolute;top:3px;width:22px;height:22px;padding:0;border-radius:6px;font-size:12px;line-height:1;display:flex;align-items:center;justify-content:center;background:color-mix(in srgb,var(--panel) 70%,transparent);border:1px solid transparent;color:var(--ink);opacity:.8;cursor:pointer}
+.cell .x{right:3px}
+.cell .ne{left:3px}
+.cell .x:hover,.cell .x:focus-visible{color:#d6457a;border-color:#d6457a;opacity:1}
+.cell .ne:hover,.cell .ne:focus-visible{border-color:var(--sel);opacity:1}
+@media (hover:hover){.cell .x,.cell .ne{opacity:.3}.cell:hover .x,.cell:hover .ne{opacity:1}}
+.mcell .x{flex:0 0 auto;width:44px;height:44px;padding:0;border-radius:10px;font-size:16px;color:var(--ink)}
+.mn.add{color:var(--mute);font-style:italic}
+.armed{display:flex;align-items:center;gap:10px;margin:0 0 12px;padding:8px 12px;border-radius:10px;border:2px solid var(--sel);background:color-mix(in srgb,var(--sel) 10%,var(--panel))}
+.armed[hidden]{display:none}
 @media (prefers-reduced-motion:reduce){.fill{transition:none}}
 </style>
 </head>
@@ -224,7 +234,7 @@ button:disabled{opacity:.45;cursor:default}
 <div class="wrap">
   <header>
     <h1>My week</h1>
-    <span class="hint" id="hint">Drag an activity into a box, or tap one and then tap boxes. Click a filled box to add a note.</span>
+    <span class="hint" id="hint">Pick an activity, then click empty boxes (or drag it in). ✕ removes a box; ✎ or clicking a filled box edits its note.</span>
     <span class="sp"></span>
     <button id="undo" disabled>↩ Undo</button><button id="clear">Clear week</button><button id="bkb">Export / import</button><button id="themeBtn" aria-label="Change theme"></button><button id="acct">Sign in</button><span class="hint" id="syncst"></span>
   </header>
@@ -234,6 +244,7 @@ button:disabled{opacity:.45;cursor:default}
     <div class="pal" id="pal"></div>
   </div>
 
+  <div class="armed" id="armed" hidden></div>
   <div class="wk"><button id="wp" aria-label="Previous week">‹</button><b id="wl"></b><button id="wn" aria-label="Next week">›</button><button id="wt">This week</button><button id="wc">Copy last week</button></div>
   <div class="scroll"><div class="grid" id="grid"></div></div>
 
@@ -242,7 +253,7 @@ button:disabled{opacity:.45;cursor:default}
   <div class="stats"><h2>Pillars</h2><p class="pex">The Four Pillars represent the four key areas of life that deserve your time and attention: Work, Passion &amp; Pursuit, Life &amp; Love, and Health. They provide a simple way to think about how you spend your time and where it is being invested. The pillars aren’t rigid categories, and many activities will naturally support more than one. What matters is that each has a place in your life.</p><div class="hint" style="margin-bottom:6px">Hover over (or tap) a pillar for what it means. Each box counts toward every pillar its activity strengthens.</div><div id="pillars"></div></div>
 </div>
 
-<div class="modal" id="modal" hidden><div class="box" role="dialog" aria-modal="true" aria-labelledby="mt"><h2 id="mt" style="font-size:16px;margin:0 0 10px"></h2><textarea id="mn" placeholder="Add a note, e.g. which songs, which session, who you’re meeting"></textarea><div class="mb"><button id="mrm">Remove from week</button><span style="flex:1"></span><button id="mc">Cancel</button><button id="ms">Save note</button></div></div></div>
+<div class="modal" id="modal" hidden><div class="box" role="dialog" aria-modal="true" aria-labelledby="mt"><h2 id="mt" style="font-size:16px;margin:0 0 10px"></h2><textarea id="mn" placeholder="Add a note, e.g. which songs, which session, who you’re meeting"></textarea><div class="mb"><button id="mrm">Remove from week</button><button id="mch">Change activity</button><span style="flex:1"></span><button id="mc">Cancel</button><button id="ms">Save note</button></div></div></div>
 <div style="display:none">
 </div>
 
@@ -339,7 +350,7 @@ function save(){
 function cat(id){for(var i=0;i<cats.length;i++)if(cats[i].id===id)return cats[i];return null;}
 function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
 
-function renderPal(){
+function renderPal(){updateArmed();
   var p=document.getElementById('pal');p.innerHTML='';p.className='pal'+(editing?' ed':'');
   if(editing){
     cats.forEach(function(c,i){
@@ -401,7 +412,9 @@ function renderGridDesktop(){
       cell.setAttribute('aria-label',dn+' '+sn+(c?': '+c.n:': empty'));
       if(c){
         cell.style.setProperty('--c',c.c);cell.draggable=true;
-        cell.innerHTML='<div><span class="e">'+esc(c.e)+'</span><span class="n">'+esc(c.n)+'</span>'+(notes[key]?'<span class="nb" title="'+esc(notes[key])+'">'+esc(notes[key])+'</span>':'')+'</div>'+(notes[key]?'<span class="nt" title="'+esc(notes[key])+'">📝</span>':'');
+        cell.innerHTML='<button class="x" aria-label="Remove from week" title="Remove">✕</button><button class="ne" aria-label="Edit note" title="Note">✎</button><div><span class="e">'+esc(c.e)+'</span><span class="n">'+esc(c.n)+'</span>'+(notes[key]?'<span class="nb" title="'+esc(notes[key])+'">'+esc(notes[key])+'</span>':'')+'</div>'+(notes[key]?'<span class="nt" title="'+esc(notes[key])+'">📝</span>':'');
+        cell.querySelector('.x').onclick=function(ev){ev.stopPropagation();pushUndo();delete plan[key];delete notes[key];save();renderGrid();renderStats();};
+        cell.querySelector('.ne').onclick=function(ev){ev.stopPropagation();openNote(key);};
         cell.ondragstart=function(ev){ev.dataTransfer.setData('text/plain','cell:'+key);ev.dataTransfer.effectAllowed='move';};
       }
       cell.ondragover=function(ev){ev.preventDefault();cell.classList.add('over');};
@@ -419,7 +432,7 @@ function renderGridDesktop(){
         save();renderGrid();renderStats();
       };
       cell.onclick=function(){
-        if(selected){pushUndo();plan[key]=selected;}
+        if(plan[key]){openNote(key);return;}if(selected){pushUndo();plan[key]=selected;}
         else if(plan[key]){openNote(key);return;}
         else return;
         save();renderGrid();renderStats();
@@ -459,10 +472,12 @@ function renderGrid(){
     var cell=document.createElement('div');cell.className='mcell'+(c?' full':'');
     if(c){
       cell.style.setProperty('--c',c.c);
-      cell.innerHTML='<span class="e">'+esc(c.e)+'</span><div><b>'+esc(c.n)+'</b>'+(notes[key]?'<div class="mn">'+esc(notes[key])+'</div>':'')+'</div>';
+      cell.innerHTML='<span class="e">'+esc(c.e)+'</span><div style="flex:1;min-width:0"><b>'+esc(c.n)+'</b>'+(notes[key]?'<div class="mn">'+esc(notes[key])+'</div>':'<div class="mn add">+ Add note</div>')+'</div><button class="x" aria-label="Remove from week">✕</button>';
+      cell.querySelector('.x').onclick=function(ev){ev.stopPropagation();pushUndo();delete plan[key];delete notes[key];save();renderGrid();renderStats();};
     }else{cell.textContent=selected?'Tap to add':'Tap to choose';}
     cell.onclick=function(){
-      if(selected){pushUndo();plan[key]=selected;save();renderGrid();renderStats();}
+      if(plan[key]){openNote(key);}
+      else if(selected){pushUndo();plan[key]=selected;save();renderGrid();renderStats();}
       else if(plan[key]){openNote(key);}
       else{openPicker(key);}
     };
@@ -654,11 +669,26 @@ document.addEventListener('visibilitychange',async function(){
   if(document.visibilityState!=='visible'||!sess||!cloudReady||pushT)return;
   try{var d=await pullCloud();if(d&&Array.isArray(d.cats)&&!pushT){applyData(d);renderAll();updateUndo();setSt('Saved ✓');}}catch(e){}
 });
+function updateArmed(){
+  var el=document.getElementById('armed');if(!el)return;
+  var c=selected?cat(selected):null;
+  if(!c){el.hidden=true;return;}
+  el.hidden=false;
+  el.innerHTML='<span style="font-size:22px">'+esc(c.e)+'</span><span style="flex:1"><b>'+esc(c.n)+'</b> is selected – click empty boxes to add it.</span><button id="adone">Done</button>';
+  el.querySelector('#adone').onclick=function(){selected=null;renderPal();renderGrid();};
+}
+document.getElementById('mch').onclick=function(){
+  var k=noteKey;if(!k)return;
+  var v=document.getElementById('mn').value.trim();
+  if(v)notes[k]=v;else delete notes[k];
+  save();closeNote();openPicker(k);
+};
+document.addEventListener('keydown',function(ev){if(ev.key==='Escape'&&selected&&!noteKey){selected=null;renderPal();renderGrid();}});
 function renderAll(){renderPal();renderWeekbar();renderGrid();renderStats();}
 
 document.getElementById('toggleEdit').onclick=function(){
   editing=!editing;selected=null;this.textContent=editing?'Done editing':'Edit activities';
-  document.getElementById('hint').textContent=editing?'Change symbols, names and colours, or add new activities.':'Drag an activity into a box, or tap one and then tap boxes. Click a filled box to add a note.';
+  document.getElementById('hint').textContent=editing?'Change symbols, names and colours, or add new activities.':'Pick an activity, then click empty boxes (or drag it in). ✕ removes a box; ✎ or clicking a filled box edits its note.';
   renderPal();
 };
 document.getElementById('clear').onclick=function(){
