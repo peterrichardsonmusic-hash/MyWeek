@@ -179,7 +179,7 @@ button:disabled{opacity:.45;cursor:default}
 .cell .ne{left:3px}
 .cell .x:hover,.cell .x:focus-visible{color:#d6457a;border-color:#d6457a;opacity:1}
 .cell .ne:hover,.cell .ne:focus-visible{border-color:var(--sel);opacity:1}
-@media (hover:hover){.cell .x,.cell .ne{opacity:.3}.cell:hover .x,.cell:hover .ne{opacity:1}}
+@media (hover:hover){.cell .x,.cell .ne{opacity:0}.cell:hover .x,.cell:hover .ne,.cell:focus-within .x,.cell:focus-within .ne{opacity:1}}
 .mcell .x{flex:0 0 auto;width:44px;height:44px;padding:0;border-radius:10px;font-size:16px;color:var(--ink)}
 .mn.add{color:var(--mute);font-style:italic}
 .armed{display:flex;align-items:center;gap:10px;margin:0 0 12px;padding:8px 12px;border-radius:10px;border:2px solid var(--sel);background:color-mix(in srgb,var(--sel) 10%,var(--panel))}
