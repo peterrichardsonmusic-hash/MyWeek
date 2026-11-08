@@ -184,6 +184,21 @@ button:disabled{opacity:.45;cursor:default}
 .mn.add{color:var(--mute);font-style:italic}
 .armed{display:flex;align-items:center;gap:10px;margin:0 0 12px;padding:8px 12px;border-radius:10px;border:2px solid var(--sel);background:color-mix(in srgb,var(--sel) 10%,var(--panel))}
 .armed[hidden]{display:none}
+.hab{margin-top:16px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px}
+:root[data-theme="light"] .hab{border-top:3px solid #2e9d5b}
+.habtop{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+.habtop h2{font-size:16px;margin:0;font-weight:600}
+.hgrid{display:grid;grid-template-columns:minmax(70px,1.5fr) repeat(7,minmax(28px,1fr)) 40px;gap:4px 3px;align-items:center}
+.hd{text-align:center;font-size:12px;font-weight:600;padding:3px 0;border-radius:8px}
+.hd small{display:block;font-weight:400;opacity:.8}
+.hd.today{background:var(--sel);color:var(--bg)}
+.hn{font-size:14px;overflow-wrap:anywhere;padding-right:4px}
+.hc{display:flex;align-items:center;justify-content:center;min-height:38px;border-radius:8px;cursor:pointer}
+.hc.today{background:color-mix(in srgb,var(--sel) 12%,transparent)}
+.hc input{width:22px;height:22px;margin:0;accent-color:var(--sel);cursor:pointer}
+.hcnt{text-align:right;color:var(--mute);font-size:13px}
+.hcnt.full{color:#2e9d5b;font-weight:600}
+.hsum{margin-top:8px;font-size:13px;color:var(--mute)}
 @media (prefers-reduced-motion:reduce){.fill{transition:none}}
 </style>
 </head>
@@ -248,6 +263,8 @@ button:disabled{opacity:.45;cursor:default}
   <div class="wk"><button id="wp" aria-label="Previous week">‹</button><b id="wl"></b><button id="wn" aria-label="Next week">›</button><button id="wt">This week</button><button id="wc">Copy last week</button></div>
   <div class="scroll"><div class="grid" id="grid"></div></div>
 
+  <div class="hab"><div class="habtop"><h2>Daily habits</h2><button id="habedit">Edit habits</button></div><div class="hint" id="habhint" style="margin-bottom:8px"></div><div id="habs"></div></div>
+
   <div class="stats"><h2>Where your week goes</h2><div class="hint" style="margin-bottom:6px">Set a weekly target per activity under Edit activities; a marker on the bar shows it.</div><div id="stats"></div></div>
 
   <div class="stats"><h2>Pillars</h2><p class="pex">The Four Pillars represent the four key areas of life that deserve your time and attention: Work, Passion &amp; Pursuit, Life &amp; Love, and Health. They provide a simple way to think about how you spend your time and where it is being invested. The pillars aren’t rigid categories, and many activities will naturally support more than one. What matters is that each has a place in your life.</p><div class="hint" style="margin-bottom:6px">Hover over (or tap) a pillar for what it means. Each box counts toward every pillar its activity strengthens.</div><div id="pillars"></div></div>
@@ -278,12 +295,12 @@ var MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'
 function iso(d){return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2);}
 function monday(d){var x=new Date(d.getFullYear(),d.getMonth(),d.getDate());x.setDate(x.getDate()-((x.getDay()+6)%7));return x;}
 var cats=DEFAULT_CATS.slice(), plan={}, notes={}, selected=null, editing=false, noteKey=null;
-var weeks={}, targets={}, undoStack=[], wk=iso(monday(new Date()));
+var weeks={}, targets={}, habits=[], editingHabits=false, undoStack=[], wk=iso(monday(new Date()));
 function dateOf(di){var p=wk.split('-');return new Date(+p[0],+p[1]-1,+p[2]+di);}
 function isToday(di){return wk===iso(monday(new Date()))&&di===(new Date().getDay()+6)%7;}
 function fmt(d){return DAYS[(d.getDay()+6)%7]+' '+d.getDate()+' '+MON[d.getMonth()];}
-function syncWeek(){if(Object.keys(plan).length||Object.keys(notes).length)weeks[wk]={plan:plan,notes:notes};else delete weeks[wk];}
-function data(){return {v:2,cats:cats,weeks:weeks,targets:targets};}
+function syncWeek(){var t=(weeks[wk]&&weeks[wk].ticks)||{};if(Object.keys(plan).length||Object.keys(notes).length||Object.keys(t).length)weeks[wk]={plan:plan,notes:notes,ticks:t};else delete weeks[wk];}
+function data(){return {v:2,cats:cats,weeks:weeks,targets:targets,habits:habits};}
 function renderWeekbar(){
   document.getElementById('wl').textContent=fmt(dateOf(0))+' – '+fmt(dateOf(6));
   document.getElementById('wt').disabled=(wk===iso(monday(new Date())));
@@ -291,7 +308,7 @@ function renderWeekbar(){
 function setWeek(w){
   syncWeek();wk=w;var o=weeks[wk]||{};plan=o.plan||{};notes=o.notes||{};
   undoStack=[];updateUndo();
-  for(var i=0;i<7;i++)if(isToday(i))curDay=i;
+  for(var i=0;i<7;i++)if(isToday(i))curDay=i;renderHabits();
   renderWeekbar();renderGrid();renderStats();
 }
 function shiftWeek(n){var d=dateOf(0);d.setDate(d.getDate()+7*n);setWeek(iso(d));}
@@ -327,7 +344,7 @@ function openBackup(){
     try{
       var o=JSON.parse(ta.value);
       if(!o||!Array.isArray(o.cats)||typeof o.weeks!=='object')throw 0;
-      if(!confirm('Replace everything with this backup?'))return;
+      if(!confirm('Replace everything with this backup?'))return;habits=o.habits||[];
       cats=o.cats;weeks=o.weeks||{};targets=o.targets||{};
       cats.forEach(function(c){if(!c.p)c.p=[];});
       var w=weeks[wk]||{};plan=w.plan||{};notes=w.notes||{};undoStack=[];
@@ -339,7 +356,7 @@ function openBackup(){
 function load(){
   try{
     var s=localStorage.getItem('weekplanner.v1');
-    if(s){var o=JSON.parse(s); if(o.cats&&o.cats.length)cats=o.cats; if(o.weeks){weeks=o.weeks;targets=o.targets||{};}else if(o.plan||o.notes){weeks[wk]={plan:o.plan||{},notes:o.notes||{}};}
+    if(s){var o=JSON.parse(s); if(o.cats&&o.cats.length)cats=o.cats; if(o.weeks){weeks=o.weeks;targets=o.targets||{};habits=o.habits||[];}else if(o.plan||o.notes){weeks[wk]={plan:o.plan||{},notes:o.notes||{}};}
       var w=weeks[wk]||{};plan=w.plan||{};notes=w.notes||{};}
   }catch(e){}
   cats.forEach(function(c){if(!c.p)c.p=(DEFAULT_P[c.id]||[]).slice();});
@@ -596,9 +613,9 @@ function cloudQueue(){if(!sess||!cloudReady)return;setSt('Saving…');clearTimeo
 function resetAll(){
   cats=JSON.parse(JSON.stringify(DEFAULT_CATS));
   cats.forEach(function(c){c.p=(DEFAULT_P[c.id]||[]).slice();});
-  weeks={};targets={};plan={};notes={};undoStack=[];
+  weeks={};targets={};habits=[];plan={};notes={};undoStack=[];
 }
-function applyData(o){
+function applyData(o){habits=o.habits||[];
   cats=o.cats;weeks=o.weeks||{};targets=o.targets||{};
   cats.forEach(function(c){if(!c.p)c.p=[];});
   var w=weeks[wk]||{};plan=w.plan||{};notes=w.notes||{};undoStack=[];
@@ -684,7 +701,72 @@ document.getElementById('mch').onclick=function(){
   save();closeNote();openPicker(k);
 };
 document.addEventListener('keydown',function(ev){if(ev.key==='Escape'&&selected&&!noteKey){selected=null;renderPal();renderGrid();}});
-function renderAll(){renderPal();renderWeekbar();renderGrid();renderStats();}
+function getTicks(){return (weeks[wk]&&weeks[wk].ticks)||{};}
+function setTick(hid,di,val){
+  var w=weeks[wk];
+  if(!w){w=weeks[wk]={plan:plan,notes:notes,ticks:{}};}
+  if(!w.ticks)w.ticks={};
+  var k=hid+'-'+di;
+  if(val)w.ticks[k]=1;else delete w.ticks[k];
+  save();
+}
+function renderHabits(){
+  var box=document.getElementById('habs');if(!box)return;
+  box.innerHTML='';
+  document.getElementById('habedit').textContent=editingHabits?'Done':'Edit habits';
+  var hint=document.getElementById('habhint');
+  if(editingHabits){
+    hint.textContent='Add, rename or delete habits. Deleting a habit also removes its ticks.';
+    habits.forEach(function(h,i){
+      var r=document.createElement('div');r.className='edit-row';r.style.marginBottom='6px';
+      r.innerHTML='<input type="text" class="nm" value="'+esc(h.n)+'" aria-label="Habit name" maxlength="60"><button>Delete</button>';
+      r.querySelector('input').oninput=function(){h.n=this.value;save();};
+      r.querySelector('button').onclick=function(){
+        habits.splice(i,1);
+        Object.keys(weeks).forEach(function(w){var t=weeks[w].ticks;if(t)for(var k in t)if(k.indexOf(h.id+'-')===0)delete t[k];});
+        save();renderHabits();
+      };
+      box.appendChild(r);
+    });
+    var add=document.createElement('div');add.className='edit-row';add.style.marginTop='8px';
+    add.innerHTML='<input type="text" class="nm" id="hnew" placeholder="New habit, e.g. Drink water" maxlength="60"><button>Add habit</button>';
+    var doAdd=function(){var v=add.querySelector('input').value.trim();if(!v)return;habits.push({id:'h'+Date.now(),n:v});save();renderHabits();document.getElementById('hnew').focus();};
+    add.querySelector('button').onclick=doAdd;
+    add.querySelector('input').onkeydown=function(ev){if(ev.key==='Enter')doAdd();};
+    box.appendChild(add);
+    return;
+  }
+  if(!habits.length){hint.textContent='';box.innerHTML='<div class="hint">No habits yet. Press “Edit habits” to add the things you want to tick off every day.</div>';return;}
+  hint.textContent='Tick off what you’ve done each day.';
+  var g=document.createElement('div');g.className='hgrid';
+  g.appendChild(document.createElement('div'));
+  DAYS.forEach(function(dn,di){var d=document.createElement('div');d.className='hd'+(isToday(di)?' today':'');d.innerHTML=dn+'<small>'+dateOf(di).getDate()+'</small>';g.appendChild(d);});
+  g.appendChild(document.createElement('div'));
+  var sum=document.createElement('div');sum.className='hsum';
+  var rows=[];
+  function upd(){
+    var t=getTicks(),tot=0;
+    rows.forEach(function(o){var n=0;for(var d=0;d<7;d++)if(t[o.h.id+'-'+d])n++;tot+=n;o.el.textContent=n+'/7';o.el.className='hcnt'+(n===7?' full':'');});
+    sum.textContent='This week: '+tot+' of '+(habits.length*7)+' ticked';
+  }
+  habits.forEach(function(h){
+    var nm=document.createElement('div');nm.className='hn';nm.textContent=h.n;g.appendChild(nm);
+    var t=getTicks();
+    for(var di=0;di<7;di++){
+      (function(di){
+        var l=document.createElement('label');l.className='hc'+(isToday(di)?' today':'');
+        var cb=document.createElement('input');cb.type='checkbox';cb.checked=!!t[h.id+'-'+di];
+        cb.setAttribute('aria-label',h.n+', '+DAYS[di]);
+        cb.onchange=function(){setTick(h.id,di,cb.checked);upd();};
+        l.appendChild(cb);g.appendChild(l);
+      })(di);
+    }
+    var c=document.createElement('div');g.appendChild(c);rows.push({h:h,el:c});
+  });
+  box.appendChild(g);box.appendChild(sum);upd();
+}
+document.getElementById('habedit').onclick=function(){editingHabits=!editingHabits;renderHabits();};
+function renderAll(){renderPal();renderHabits();renderWeekbar();renderGrid();renderStats();}
 
 document.getElementById('toggleEdit').onclick=function(){
   editing=!editing;selected=null;this.textContent=editing?'Done editing':'Edit activities';
