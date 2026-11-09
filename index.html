@@ -226,6 +226,7 @@ button:disabled{opacity:.45;cursor:default}
 .menu .hint{padding:4px 12px 2px}
 #menuBtn{min-width:44px;font-size:18px;line-height:1}
 #menuBtn.warn{border-color:#d6457a;color:#d6457a}
+.hs{white-space:nowrap;font-size:12px;color:var(--mute);margin-left:4px}
 @media (prefers-reduced-motion:reduce){.fill{transition:none}}
 </style>
 </head>
@@ -730,6 +731,26 @@ document.getElementById('mch').onclick=function(){
   save();closeNote();openPicker(k);
 };
 document.addEventListener('keydown',function(ev){if(ev.key==='Escape'&&selected&&!noteKey){selected=null;renderPal();renderGrid();}});
+function dayNum(y,m,d){return Math.round(Date.UTC(y,m,d)/86400000);}
+function streaks(hid){
+  var nums=[];
+  Object.keys(weeks).forEach(function(w){
+    var t=weeks[w].ticks;if(!t)return;
+    var p=w.split('-');
+    for(var k in t){if(k.indexOf(hid+'-')!==0)continue;nums.push(dayNum(+p[0],+p[1]-1,+p[2]+(+k.slice(hid.length+1))));}
+  });
+  nums.sort(function(a,b){return a-b;});
+  var set={},best=0,run=0,prev=null;
+  nums.forEach(function(n){
+    set[n]=1;
+    if(prev!==null&&n===prev)return;
+    run=(prev!==null&&n===prev+1)?run+1:1;prev=n;if(run>best)best=run;
+  });
+  var now=new Date(),t0=dayNum(now.getFullYear(),now.getMonth(),now.getDate());
+  var c=set[t0]?t0:t0-1,cur=0;
+  while(set[c]){cur++;c--;}
+  return {cur:cur,best:best};
+}
 function getTicks(){return (weeks[wk]&&weeks[wk].ticks)||{};}
 function setTick(hid,di,val){
   var w=weeks[wk];
@@ -775,11 +796,11 @@ function renderHabits(){
   var rows=[];
   function upd(){
     var t=getTicks(),tot=0;
-    rows.forEach(function(o){var n=0;for(var d=0;d<7;d++)if(t[o.h.id+'-'+d])n++;tot+=n;o.el.textContent=n+'/7';o.el.className='hcnt'+(n===7?' full':'');});
+    rows.forEach(function(o){var n=0;for(var d=0;d<7;d++)if(t[o.h.id+'-'+d])n++;tot+=n;o.el.textContent=n+'/7';o.el.className='hcnt'+(n===7?' full':'');var s=streaks(o.h.id);o.st.textContent=s.cur>=2?'🔥 '+s.cur:'';o.nm.title='Current streak: '+s.cur+(s.cur===1?' day':' days')+' · Best: '+s.best;});
     sum.textContent='This week: '+tot+' of '+(habits.length*7)+' ticked';
   }
   habits.forEach(function(h){
-    var nm=document.createElement('div');nm.className='hn';nm.textContent=h.n;g.appendChild(nm);
+    var nm=document.createElement('div');nm.className='hn';nm.textContent=h.n;var st=document.createElement('span');st.className='hs';nm.appendChild(st);g.appendChild(nm);
     var t=getTicks();
     for(var di=0;di<7;di++){
       (function(di){
@@ -790,7 +811,7 @@ function renderHabits(){
         l.appendChild(cb);g.appendChild(l);
       })(di);
     }
-    var c=document.createElement('div');g.appendChild(c);rows.push({h:h,el:c});
+    var c=document.createElement('div');g.appendChild(c);rows.push({h:h,el:c,st:st,nm:nm});
   });
   box.appendChild(g);box.appendChild(sum);upd();
 }
