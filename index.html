@@ -199,6 +199,33 @@ button:disabled{opacity:.45;cursor:default}
 .hcnt{text-align:right;color:var(--mute);font-size:13px}
 .hcnt.full{color:#2e9d5b;font-weight:600}
 .hsum{margin-top:8px;font-size:13px;color:var(--mute)}
+.info{position:relative;display:inline-flex;align-items:center}
+.ib{border:0;background:none;padding:2px 6px;font-size:18px;line-height:1;color:var(--mute);cursor:pointer;border-radius:50%}
+.ib:hover{color:var(--ink);border:0}
+.pop{display:none;position:absolute;left:0;top:100%;margin-top:6px;z-index:15;width:min(320px,86vw);background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:10px 12px;box-shadow:0 8px 24px rgba(0,0,0,.25);font-size:13.5px;line-height:1.45;font-weight:400;text-align:left}
+.pop p{margin:0 0 8px}
+.pop p:last-child{margin:0}
+.info.open .pop{display:block}
+@media (hover:hover){.info:hover .pop{display:block}}
+.ptop{display:flex;align-items:center;gap:6px;margin-bottom:10px}
+.ptop h2,.habtop h2{margin:0}
+.coll{display:flex;align-items:center;gap:6px;background:none;border:0;padding:2px 0;font:inherit;font-weight:600;font-size:16px;color:inherit;cursor:pointer}
+.coll:hover{border:0}
+.chev{display:inline-block;transition:transform .15s;font-size:14px;color:var(--mute)}
+.collapsed .chev{transform:rotate(-90deg)}
+.collapsed .pbody{display:none}
+.collapsed .ptop,.collapsed .habtop{margin-bottom:0}
+.collapsed #habedit{display:none}
+#hint:empty,#habhint:empty{display:none}
+#hint{margin-bottom:8px}
+.menuwrap{position:relative}
+.menu{position:absolute;right:0;top:calc(100% + 6px);z-index:15;min-width:210px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:6px;box-shadow:0 8px 24px rgba(0,0,0,.25);display:flex;flex-direction:column;gap:2px}
+.menu[hidden]{display:none}
+.menu button{text-align:left;border:0;background:none;padding:10px 12px;border-radius:8px}
+.menu button:hover{background:var(--empty);border:0}
+.menu .hint{padding:4px 12px 2px}
+#menuBtn{min-width:44px;font-size:18px;line-height:1}
+#menuBtn.warn{border-color:#d6457a;color:#d6457a}
 @media (prefers-reduced-motion:reduce){.fill{transition:none}}
 </style>
 </head>
@@ -249,13 +276,15 @@ button:disabled{opacity:.45;cursor:default}
 <div class="wrap">
   <header>
     <h1>My week</h1>
-    <span class="hint" id="hint">Pick an activity, then click empty boxes (or drag it in). ✕ removes a box; ✎ or clicking a filled box edits its note.</span>
+    <span class="info"><button class="ib" aria-label="How to use this page" aria-expanded="false">ⓘ</button><div class="pop"><p>Pick an activity (or drag it) and click empty boxes to fill them. Hover over a filled box for ✕ to remove it and ✎ to add a note.</p><p>On a phone, tap an empty box to choose an activity, and tap a filled box to add a note.</p></div></span>
     <span class="sp"></span>
-    <button id="undo" disabled>↩ Undo</button><button id="clear">Clear week</button><button id="bkb">Export / import</button><button id="themeBtn" aria-label="Change theme"></button><button id="acct">Sign in</button><span class="hint" id="syncst"></span>
+    <button id="undo" disabled>↩ Undo</button><button id="themeBtn" aria-label="Change theme"></button>
+    <span class="menuwrap"><button id="menuBtn" aria-label="More options" aria-haspopup="true" aria-expanded="false">⋯</button><div class="menu" id="menu" hidden><button id="bkb">Export / import</button><button id="clear">Clear week</button><button id="acct">Sign in</button><div class="hint" id="syncst"></div></div></span>
   </header>
 
   <div class="bar">
     <div class="bar-top"><b>Activities</b><span class="sp" style="flex:1"></span><button id="toggleEdit">Edit activities</button></div>
+    <div class="hint" id="hint"></div>
     <div class="pal" id="pal"></div>
   </div>
 
@@ -263,11 +292,11 @@ button:disabled{opacity:.45;cursor:default}
   <div class="wk"><button id="wp" aria-label="Previous week">‹</button><b id="wl"></b><button id="wn" aria-label="Next week">›</button><button id="wt">This week</button><button id="wc">Copy last week</button></div>
   <div class="scroll"><div class="grid" id="grid"></div></div>
 
-  <div class="hab"><div class="habtop"><h2>Daily habits</h2><button id="habedit">Edit habits</button></div><div class="hint" id="habhint" style="margin-bottom:8px"></div><div id="habs"></div></div>
+  <div class="hab" id="p-hab"><div class="habtop"><h2><button class="coll" data-p="hab" aria-expanded="true"><span class="chev" aria-hidden="true">▾</span>Daily habits</button></h2><button id="habedit">Edit habits</button></div><div class="pbody"><div class="hint" id="habhint" style="margin-bottom:8px"></div><div id="habs"></div></div></div>
 
-  <div class="stats"><h2>Where your week goes</h2><div class="hint" style="margin-bottom:6px">Set a weekly target per activity under Edit activities; a marker on the bar shows it.</div><div id="stats"></div></div>
+  <div class="stats" id="p-stats"><div class="ptop"><h2><button class="coll" data-p="stats" aria-expanded="true"><span class="chev" aria-hidden="true">▾</span>Where your week goes</button></h2><span class="info"><button class="ib" aria-label="About this panel" aria-expanded="false">ⓘ</button><div class="pop"><p>Each bar shows how many of the week’s boxes an activity fills.</p><p>Set a weekly target for an activity under Edit activities, and a marker on its bar shows the target.</p></div></span></div><div class="pbody"><div id="stats"></div></div></div>
 
-  <div class="stats"><h2>Pillars</h2><p class="pex">The Four Pillars represent the four key areas of life that deserve your time and attention: Work, Passion &amp; Pursuit, Life &amp; Love, and Health. They provide a simple way to think about how you spend your time and where it is being invested. The pillars aren’t rigid categories, and many activities will naturally support more than one. What matters is that each has a place in your life.</p><div class="hint" style="margin-bottom:6px">Hover over (or tap) a pillar for what it means. Each box counts toward every pillar its activity strengthens.</div><div id="pillars"></div></div>
+  <div class="stats" id="p-pill"><div class="ptop"><h2><button class="coll" data-p="pill" aria-expanded="true"><span class="chev" aria-hidden="true">▾</span>Pillars</button></h2><span class="info"><button class="ib" aria-label="About the four pillars" aria-expanded="false">ⓘ</button><div class="pop"><p>The Four Pillars represent the four key areas of life that deserve your time and attention: Work, Passion &amp; Pursuit, Life &amp; Love, and Health. They provide a simple way to think about how you spend your time and where it is being invested.</p><p>The pillars aren’t rigid categories, and many activities will naturally support more than one. What matters is that each has a place in your life.</p><p>Each box counts toward every pillar its activity strengthens. Hover over or tap a pillar name below for its meaning.</p></div></span></div><div class="pbody"><div id="pillars"></div></div></div>
 </div>
 
 <div class="modal" id="modal" hidden><div class="box" role="dialog" aria-modal="true" aria-labelledby="mt"><h2 id="mt" style="font-size:16px;margin:0 0 10px"></h2><textarea id="mn" placeholder="Add a note, e.g. which songs, which session, who you’re meeting"></textarea><div class="mb"><button id="mrm">Remove from week</button><button id="mch">Change activity</button><span style="flex:1"></span><button id="mc">Cancel</button><button id="ms">Save note</button></div></div></div>
@@ -571,7 +600,7 @@ var sess=null, cloudReady=false, pushT=null;
 function saveLocal(){try{localStorage.setItem('weekplanner.v1',JSON.stringify((syncWeek(),data())));}catch(e){}}
 function emailOf(u){return u+'@'+FAKE_DOMAIN;}
 function sbHeaders(tok){var h={'apikey':SB_KEY,'Content-Type':'application/json'};if(tok)h['Authorization']='Bearer '+tok;return h;}
-function setSt(t){var e=document.getElementById('syncst');if(e)e.textContent=t;}
+function setSt(t){var e=document.getElementById('syncst');if(e)e.textContent=t;var m=document.getElementById('menuBtn');if(m)m.classList.toggle('warn',/Not saved|Offline/.test(t));}
 function updateAcct(){var b=document.getElementById('acct');b.textContent=sess?'Sign out ('+sess.username+')':'Sign in';}
 async function authCall(path,body){
   var r=await fetch(SB_URL+'/auth/v1/'+path,{method:'POST',headers:sbHeaders(),body:JSON.stringify(body)});
@@ -737,7 +766,7 @@ function renderHabits(){
     return;
   }
   if(!habits.length){hint.textContent='';box.innerHTML='<div class="hint">No habits yet. Press “Edit habits” to add the things you want to tick off every day.</div>';return;}
-  hint.textContent='Tick off what you’ve done each day.';
+  hint.textContent='';
   var g=document.createElement('div');g.className='hgrid';
   g.appendChild(document.createElement('div'));
   DAYS.forEach(function(dn,di){var d=document.createElement('div');d.className='hd'+(isToday(di)?' today':'');d.innerHTML=dn+'<small>'+dateOf(di).getDate()+'</small>';g.appendChild(d);});
@@ -766,11 +795,36 @@ function renderHabits(){
   box.appendChild(g);box.appendChild(sum);upd();
 }
 document.getElementById('habedit').onclick=function(){editingHabits=!editingHabits;renderHabits();};
+function placePop(info){var p=info.querySelector('.pop');if(!p)return;var pw=Math.min(320,window.innerWidth*0.86),r=info.getBoundingClientRect(),x=Math.max(8,Math.min(r.left,window.innerWidth-8-pw));p.style.left=(x-r.left)+'px';}
+document.querySelectorAll('.info').forEach(function(info){
+  var b=info.querySelector('.ib');
+  info.addEventListener('mouseenter',function(){placePop(info);});
+  b.onclick=function(ev){
+    ev.stopPropagation();
+    document.querySelectorAll('.info.open').forEach(function(o){if(o!==info)o.classList.remove('open');});
+    placePop(info);
+    var o=info.classList.toggle('open');b.setAttribute('aria-expanded',o?'true':'false');
+  };
+});
+var menuBtn=document.getElementById('menuBtn'),menuEl=document.getElementById('menu');
+function closeMenu(){menuEl.hidden=true;menuBtn.setAttribute('aria-expanded','false');}
+menuBtn.onclick=function(ev){ev.stopPropagation();var show=menuEl.hidden;menuEl.hidden=!show;menuBtn.setAttribute('aria-expanded',show?'true':'false');};
+menuEl.addEventListener('click',function(ev){if(ev.target.closest('button'))closeMenu();});
+document.addEventListener('click',function(ev){
+  document.querySelectorAll('.info.open').forEach(function(o){if(!o.contains(ev.target)){o.classList.remove('open');o.querySelector('.ib').setAttribute('aria-expanded','false');}});
+  if(!menuEl.hidden&&!menuEl.contains(ev.target))closeMenu();
+});
+document.addEventListener('keydown',function(ev){if(ev.key==='Escape'){closeMenu();document.querySelectorAll('.info.open').forEach(function(o){o.classList.remove('open');});}});
+var COLL={};try{COLL=JSON.parse(localStorage.getItem('weekplanner.collapsed')||'null')||{};}catch(e){}
+if(!('stats' in COLL)&&isMob()){COLL.stats=true;COLL.pill=true;}
+function applyColl(){['hab','stats','pill'].forEach(function(k){var p=document.getElementById('p-'+k);if(!p)return;p.classList.toggle('collapsed',!!COLL[k]);p.querySelector('.coll').setAttribute('aria-expanded',COLL[k]?'false':'true');});}
+document.querySelectorAll('.coll').forEach(function(b){b.onclick=function(){var k=b.getAttribute('data-p');COLL[k]=!COLL[k];try{localStorage.setItem('weekplanner.collapsed',JSON.stringify(COLL));}catch(e){}applyColl();};});
+applyColl();
 function renderAll(){renderPal();renderHabits();renderWeekbar();renderGrid();renderStats();}
 
 document.getElementById('toggleEdit').onclick=function(){
   editing=!editing;selected=null;this.textContent=editing?'Done editing':'Edit activities';
-  document.getElementById('hint').textContent=editing?'Change symbols, names and colours, or add new activities.':'Pick an activity, then click empty boxes (or drag it in). ✕ removes a box; ✎ or clicking a filled box edits its note.';
+  document.getElementById('hint').textContent=editing?'Change symbols, names and colours, set a weekly target, or add new activities.':'';
   renderPal();
 };
 document.getElementById('clear').onclick=function(){
